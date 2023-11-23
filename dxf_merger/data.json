@@ -1,0 +1,14 @@
+{
+  "desc": "files for a demo dxf merger based on ezdxf",
+  "pathin": "in/",
+  "pathout": "out/",
+  "targetfile": "merge.dxf",
+  "use_filelist": true,
+  "filelist": [
+    "page_1.dxf",
+    "page_2.dxf",
+    "page_3.dxf",
+    "page_4.dxf",
+    "page_5.dxf"
+  ]
+}
