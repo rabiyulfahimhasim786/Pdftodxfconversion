@@ -35,14 +35,83 @@ offset_x = 0.0
 offset_y = 0.0
 max_height = 0
 dxffile_messages = ''
+# filenamess= []
+# for filename in files_in:
+#     try:
+#         print("input  ->", filename)
+#         pathfilename = path_in + filename
+#         filenoext = filename.split(".")[0]
+#         append_dxf = ezdxf.readfile(pathfilename)
+#         dxffile_messages = f"Dxf file successfully merged"
+#         filenamess.append(filename)
+#     except IOError:
+#         dxffile_messages = f"Not a DXF file or a generic I/O error."
+#     except ezdxf.DXFStructureError:
+#         dxffile_messages = f"Invalid or corrupted DXF file."
+#     except Exception as e:
+#         dxffile_messages = f"Error -> {e.__class__}"
+# print(filenamess)
 # merger with filelist
 for filename in files_in:
-    # path prepare
-    print("input  ->", filename)
-    pathfilename = path_in + filename
-    filenoext = filename.split(".")[0]
+# for filename in filenamess:
     try:
+        # path prepare
+        print("input  ->", filename)
+        pathfilename = path_in + filename
+        filenoext = filename.split(".")[0]
         append_dxf = ezdxf.readfile(pathfilename)
+     
+        # Get the modelspace of the input file
+        modelspace = append_dxf.modelspace()
+
+        # Calculate the height of the DXF file
+        for entity in modelspace:
+            if entity.dxftype() == 'LINE':
+                start = entity.dxf.start
+                if max_height < start[1]:
+                    max_height = start[1]
+                end = entity.dxf.end
+                if max_height < end[1]:
+                    max_height = end[1]
+            elif entity.dxftype() == 'SPLINE':
+                control_points = entity._control_points
+                for item in control_points:
+                    if max_height < item[1]:
+                        max_height = item[1]
+            elif entity.dxftype() == 'CIRCLE' or entity.dxftype() == 'ARC' or entity.dxftype() == 'ELLIPSE':
+                center = entity.dxf.center
+                if max_height < center[1] * 2:
+                    max_height = center[1] * 2
+            elif entity.dxftype() == 'POLYLINE':
+                points = entity.points()
+                for item in points:
+                    if max_height < item[1]:
+                        max_height = item[1]
+            else:
+                if max_height < 30:
+                    max_height = 30
+
+        # Create new block definition for the input file
+        block_def = target_dxf.blocks.new(name=filename)
+
+        # Iterate over each entity in the modelspace
+        for entity in modelspace:
+            # Copy the entity to the new block definition
+            block_def.add_entity(entity.copy())
+
+        # Create an insert entity for the block definition
+        target_dxf.modelspace().add_blockref(
+            name=filename,
+            insert=(offset_x, offset_y),
+            dxfattribs={
+                "xscale": 1.0,
+                "yscale": 1.0,
+                "rotation": 0.0,
+            }
+        )
+
+        # Increment the offset for the next file
+        offset_y -= (max_height * 1.2)
         dxffile_messages = f"Dxf file successfully merged"
     except IOError:
         dxffile_messages = f"Not a DXF file or a generic I/O error."
@@ -51,62 +120,6 @@ for filename in files_in:
     except Exception as e:
         dxffile_messages = f"Error -> {e.__class__}"
     print(dxffile_messages)
-    if dxffile_messages == "Dxf file succesfully merged":
-            # Get the modelspace of the input file
-            modelspace = append_dxf.modelspace()
-
-            # Calculate the height of the DXF file
-            for entity in modelspace:
-                if entity.dxftype() == 'LINE':
-                    start = entity.dxf.start
-                    if max_height < start[1]:
-                        max_height = start[1]
-                    end = entity.dxf.end
-                    if max_height < end[1]:
-                        max_height = end[1]
-                elif entity.dxftype() == 'SPLINE':
-                    control_points = entity._control_points
-                    for item in control_points:
-                        if max_height < item[1]:
-                            max_height = item[1]
-                elif entity.dxftype() == 'CIRCLE' or entity.dxftype() == 'ARC' or entity.dxftype() == 'ELLIPSE':
-                    center = entity.dxf.center
-                    if max_height < center[1] * 2:
-                        max_height = center[1] * 2
-                elif entity.dxftype() == 'POLYLINE':
-                    points = entity.points()
-                    for item in points:
-                        if max_height < item[1]:
-                            max_height = item[1]
-                else:
-                    if max_height < 30:
-                        max_height = 30
-
-            # Create new block definition for the input file
-            block_def = target_dxf.blocks.new(name=filename)
-
-            # Iterate over each entity in the modelspace
-            for entity in modelspace:
-                # Copy the entity to the new block definition
-                block_def.add_entity(entity.copy())
-
-            # Create an insert entity for the block definition
-            target_dxf.modelspace().add_blockref(
-                name=filename,
-                insert=(offset_x, offset_y),
-                dxfattribs={
-                    "xscale": 1.0,
-                    "yscale": 1.0,
-                    "rotation": 0.0,
-                }
-            )
-
-            # Increment the offset for the next file
-            offset_y -= (max_height * 1.2)
-
-
-    else:
-         pass
 # save merged dfx target
 try:
     print("target ->", file_out)
